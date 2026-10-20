@@ -38,3 +38,10 @@
 .su-empty { color: var(--text-secondary); text-align: center; line-height: 1.6; padding: 48px 16px; font-size: 13px; }
 .su-loading, .su-error { margin: 12px 16px; padding: 10px 12px; border-radius: 10px; font-size: 12px; }.su-loading { display: flex; gap: 8px; align-items: center; color: var(--text-secondary); }.su-error { color: #ffb4b4; background: rgba(239,68,68,.12); }.su-error a { color: var(--accent-hover); }
 .su-spin { animation: su-rotate 1s linear infinite; } @keyframes su-rotate { to { transform: rotate(360deg); } }
+
+.su-filters button:disabled { opacity: .45; cursor: default; }
+.su-catalog-filters { margin: 0 16px 16px; padding: 14px; display: grid; gap: 12px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.su-catalog-filters label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.su-catalog-filters input:not([type=checkbox]), .su-catalog-filters select { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px; max-width: 100%; }
+.su-catalog-filters fieldset { display: grid; gap: 10px; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; }
+.su-catalog-filters button { border: 0; border-radius: 8px; padding: 9px; background: var(--accent-primary); color: white; }

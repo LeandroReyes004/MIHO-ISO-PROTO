@@ -17,7 +17,7 @@ async function graphql(query, variables = {}) {
   });
   if (!response.ok) throw new Error(response.status === 401 ? 'Inicia sesión en el servidor Suwayomi.' : `Error del servidor (${response.status}).`);
   const result = await response.json();
-  if (result.errors?.length) throw new Error(result.errors.map(e => e.message).join(', '));
+  if (result.errors?.length) { const message = result.errors.map(e => e.message).join(', '); throw new Error(message.includes('Cloudflare bypass currently disabled') ? 'Esta fuente requiere protección Cloudflare: activa FlareSolverr o Byparr en tu servidor Suwayomi.' : message.split('\n')[0].split(' at ')[0]); }
   return result.data;
 }
 
@@ -43,8 +43,13 @@ export const suwayomi = {
   async refreshExtensions() {
     await graphql('mutation { fetchExtensions(input: {}) { extensionStores { indexUrl } } }');
   },
-  async catalog(source, query = '') {
-    const data = await graphql('mutation($input: FetchSourceMangaInput!) { fetchSourceManga(input: $input) { mangas { id title thumbnailUrl } } }', { input: { source, page: 1, type: query ? 'SEARCH' : 'POPULAR', ...(query ? { query } : {}) } });
+  async sourceDetails(id) {
+    const fields = `__typename ... on CheckBoxFilter { name default } ... on TriStateFilter { name default } ... on TextFilter { name default } ... on SelectFilter { name default values } ... on SortFilter { name default { index ascending } values } ... on HeaderFilter { name } ... on SeparatorFilter { name }`;
+    const data = await graphql(`query($id: LongString!) { source(id: $id) { supportsLatest filters { ${fields} ... on GroupFilter { name filters { ${fields} } } } } }`, { id });
+    return data.source;
+  },
+  async catalog(source, { query = '', type = 'POPULAR', filters = [] } = {}) {
+    const data = await graphql('mutation($input: FetchSourceMangaInput!) { fetchSourceManga(input: $input) { mangas { id title thumbnailUrl } } }', { input: { source, page: 1, type, ...(type === 'SEARCH' ? { query, filters } : {}) } });
     return data.fetchSourceManga.mangas;
   },
   async chapters(id) {
