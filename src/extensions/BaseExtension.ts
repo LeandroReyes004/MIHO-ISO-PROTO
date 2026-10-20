@@ -45,8 +45,8 @@ export abstract class BaseExtension implements MangaExtension {
 
     const trimmedProxy = this.config.proxyUrl.trim();
 
-    // Query param style: e.g. "https://cors-proxy.workers.dev/?url=" or "/api/proxy?url="
-    if (trimmedProxy.endsWith('=')) {
+    // Query param style: e.g. "https://corsproxy.io/?" or "https://cors-proxy.workers.dev/?url="
+    if (trimmedProxy.endsWith('?') || trimmedProxy.endsWith('=')) {
       return `${trimmedProxy}${encodeURIComponent(targetUrl)}`;
     }
 
