@@ -36,6 +36,13 @@ export const suwayomi = {
   async addRepo(indexUrl) {
     await graphql('mutation($input: AddExtensionStoreInput!) { addExtensionStore(input: $input) { extensionStore { indexUrl } } }', { input: { indexUrl } });
   },
+  async repos() {
+    const data = await graphql('{ extensionStores { nodes { name indexUrl } } }');
+    return data.extensionStores.nodes;
+  },
+  async refreshExtensions() {
+    await graphql('mutation { fetchExtensions(input: {}) { extensionStores { indexUrl } } }');
+  },
   async catalog(source, query = '') {
     const data = await graphql('mutation($input: FetchSourceMangaInput!) { fetchSourceManga(input: $input) { mangas { id title thumbnailUrl } } }', { input: { source, page: 1, type: query ? 'SEARCH' : 'POPULAR', ...(query ? { query } : {}) } });
     return data.fetchSourceManga.mangas;
