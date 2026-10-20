@@ -15,6 +15,7 @@ import {
 import { sourcesEngine } from '../services/sourcesEngine';
 import { mangadexApi } from '../services/mangadexApi';
 import { repoService } from '../services/repoService';
+import { inmanga } from '../services/inmangaService';
 import { INITIAL_MANGAS } from '../services/storage';
 import MangaCard from '../components/MangaCard';
 import RepoManagerModal from '../components/RepoManagerModal';
@@ -56,6 +57,27 @@ export default function BrowseView({ onOpenManga }) {
     let active = true;
     if (selectedSource) {
       setLoadingCatalog(true);
+
+      // InManga live catalog
+      if (selectedSource.id === 'inmanga') {
+        inmanga.getPopularManga(1).then(res => {
+          if (active) {
+            setCatalogMangas(res.mangas.map(m => ({
+              ...m,
+              cover: m.thumbnailUrl,
+              sourceId: 'inmanga',
+              sourceName: 'InManga',
+              status: 'Popular'
+            })));
+            setLoadingCatalog(false);
+          }
+        }).catch(err => {
+          console.warn('InManga catalog error:', err);
+          if (active) setLoadingCatalog(false);
+        });
+        return () => { active = false; };
+      }
+
       const lang = selectedSource.lang || (selectedSource.langName?.includes('Español') ? 'es' : 'all');
       
       mangadexApi.searchManga('', lang, 20).then(results => {
@@ -87,6 +109,25 @@ export default function BrowseView({ onOpenManga }) {
     e.preventDefault();
     if (!sourceSearchQuery.trim()) return;
     setLoadingCatalog(true);
+
+    if (selectedSource?.id === 'inmanga') {
+      try {
+        const res = await inmanga.searchManga(sourceSearchQuery);
+        setCatalogMangas(res.mangas.map(m => ({
+          ...m,
+          cover: m.thumbnailUrl,
+          sourceId: 'inmanga',
+          sourceName: 'InManga',
+          status: 'En emisión'
+        })));
+      } catch (err) {
+        console.warn('InManga search error:', err);
+      } finally {
+        setLoadingCatalog(false);
+      }
+      return;
+    }
+
     const lang = selectedSource?.lang || (selectedSource?.langName?.includes('Español') ? 'es' : 'all');
     try {
       const results = await mangadexApi.searchManga(sourceSearchQuery, lang, 20);

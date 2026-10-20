@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { mangadexApi } from '../services/mangadexApi';
+import { inmanga } from '../services/inmangaService';
 
 export default function MangaDetailsView({ manga, onBack, onOpenChapter, onToggleLibrary, isInLibrary }) {
   const [chapters, setChapters] = useState(manga.chapters || []);
@@ -24,9 +25,35 @@ export default function MangaDetailsView({ manga, onBack, onOpenChapter, onToggl
   const [readChaptersMap, setReadChaptersMap] = useState(storage.getReadChapters());
   const [descExpanded, setDescExpanded] = useState(false);
 
-  // If this manga has a MangaDex rawId, fetch its real hosted chapters
+  // If this manga is from InManga or has a MangaDex rawId, fetch its real hosted chapters
   useEffect(() => {
     let active = true;
+
+    // InManga Source
+    if (manga.sourceId === 'inmanga' || manga.url?.includes('inmanga')) {
+      setLoadingChapters(true);
+      inmanga.getChapters(manga.id).then(res => {
+        if (active) {
+          if (res && res.chapters && res.chapters.length > 0) {
+            setChapters(res.chapters.map(c => ({
+              id: c.id,
+              name: c.name,
+              number: c.chapterNumber,
+              url: c.url,
+              dateUpload: c.dateUpload ? new Date(c.dateUpload).toLocaleDateString() : 'Reciente',
+              scanlator: 'InManga'
+            })));
+          }
+          setLoadingChapters(false);
+        }
+      }).catch(err => {
+        console.warn('InManga chapters load error:', err);
+        if (active) setLoadingChapters(false);
+      });
+      return () => { active = false; };
+    }
+
+    // MangaDex Source
     if (manga.rawId) {
       setLoadingChapters(true);
       mangadexApi.getChapters(manga.rawId, manga.lang || 'es').then(liveChaps => {

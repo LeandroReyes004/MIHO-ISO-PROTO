@@ -1,6 +1,7 @@
 // Sources and Extensions Engine for Mihon iOS with Real Manga Imagery
 import { mangadexApi } from './mangadexApi';
 import { INITIAL_MANGAS } from './storage';
+import { inmanga } from './inmangaService';
 
 export const AVAILABLE_SOURCES = [
   {
@@ -42,14 +43,14 @@ export const AVAILABLE_SOURCES = [
   {
     id: 'inmanga',
     name: 'InManga',
-    version: '1.0.9',
+    version: '1.6.0',
     lang: 'es',
     langName: 'Español',
-    icon: 'https://inmanga.com/favicon.ico',
-    isInstalled: false,
+    icon: 'https://inmanga.com/content/img/logo.png',
+    isInstalled: true,
     hasUpdate: false,
     nsfw: false,
-    description: 'Lector rápido especializado en Shonen, Seinen y mangas populares traducidos al español.'
+    description: 'Extensión oficial InManga con proxy Cloudflare. Shonen, Seinen y mangas populares en español.'
   },
   {
     id: 'lectormanga',
@@ -150,7 +151,35 @@ export const sourcesEngine = {
           });
         }
       } catch (e) {
-        console.warn('Live search error:', e);
+        console.warn('Live MangaDex search error:', e);
+      }
+    }
+
+    // InManga live API search via Cloudflare proxy & TypeScript extension
+    if (installed.some(s => s.id === 'inmanga')) {
+      try {
+        const inResults = await inmanga.searchManga(query);
+        if (inResults && inResults.mangas.length > 0) {
+          results.push({
+            sourceId: 'inmanga',
+            sourceName: 'InManga (Cloudflare Proxy)',
+            mangas: inResults.mangas.map(m => ({
+              id: m.id,
+              title: m.title,
+              cover: m.thumbnailUrl,
+              thumbnailUrl: m.thumbnailUrl,
+              url: m.url,
+              sourceId: 'inmanga',
+              sourceName: 'InManga',
+              genres: ['Manga', 'Español'],
+              status: 'En emisión',
+              author: 'InManga',
+              description: 'Manga disponible en InManga'
+            }))
+          });
+        }
+      } catch (e) {
+        console.warn('InManga live search error:', e);
       }
     }
 
@@ -180,8 +209,20 @@ export const sourcesEngine = {
 
   // Get REAL Pages for a chapter
   getPagesForChapter: async (chapter, manga) => {
+    // 0. If this is an InManga chapter or from InManga source
+    if (manga?.sourceId === 'inmanga' || chapter.url?.includes('chapterIndexControls') || (chapter.id && chapter.id.length === 36 && !chapter.id.startsWith('sl-'))) {
+      try {
+        const pageList = await inmanga.getPages(chapter.id || chapter.url);
+        if (pageList && pageList.pages.length > 0) {
+          return pageList.pages.map(p => p.imageUrl);
+        }
+      } catch (err) {
+        console.warn('InManga live pages extraction error:', err);
+      }
+    }
+
     // 1. Try real live MangaDex pages if chapter has UUID
-    if (chapter.id && chapter.id.length >= 24 && chapter.id.includes('-')) {
+    if (chapter.id && chapter.id.length >= 24 && chapter.id.includes('-') && manga?.sourceId === 'mangadex') {
       try {
         const livePages = await mangadexApi.getChapterPages(chapter.id);
         if (livePages && livePages.length > 0) {

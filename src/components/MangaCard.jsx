@@ -30,7 +30,7 @@ export default function MangaCard({ manga, onClick, viewMode = 'grid' }) {
           }}
         >
           <img
-            src={manga.cover}
+            src={manga.thumbnailUrl || manga.cover}
             alt={manga.title}
             loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -81,7 +81,7 @@ export default function MangaCard({ manga, onClick, viewMode = 'grid' }) {
     >
       <div className="manga-cover-wrap">
         <img
-          src={manga.cover}
+          src={manga.thumbnailUrl || manga.cover}
           alt={manga.title}
           loading="lazy"
           className="manga-cover"
