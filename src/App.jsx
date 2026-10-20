@@ -8,7 +8,7 @@ import FilterModal from './components/FilterModal';
 import LibraryView from './views/LibraryView';
 import UpdatesView from './views/UpdatesView';
 import HistoryView from './views/HistoryView';
-import BrowseView from './views/BrowseView';
+import SuwayomiBrowse from './views/SuwayomiBrowse';
 import MoreView from './views/MoreView';
 import MangaDetailsView from './views/MangaDetailsView';
 
@@ -221,9 +221,7 @@ export default function App() {
         );
       case 'browse':
         return (
-          <BrowseView
-            onOpenManga={handleOpenManga}
-          />
+          <SuwayomiBrowse />
         );
       case 'more':
         return (
