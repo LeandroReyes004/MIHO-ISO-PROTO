@@ -47,3 +47,6 @@
 .su-catalog-filters button { border: 0; border-radius: 8px; padding: 9px; background: var(--accent-primary); color: white; }
 
 .su-scroll-next { position: fixed; right: 18px; bottom: calc(var(--nav-height) + var(--sab) + 18px); z-index: 30; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--accent-primary); color: white; font-size: 24px !important; box-shadow: 0 3px 14px #0008; }
+
+.su-chapter-open { border: 0; background: transparent; color: inherit; padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1; text-align: left; min-width: 0; }
+.su-saved { display: block; color: var(--accent-hover); margin-top: 5px; font-size: 11px; }
