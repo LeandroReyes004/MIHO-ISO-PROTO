@@ -1,156 +1,62 @@
-import React, { useState } from 'react';
-import { Search, X, Layers, ArrowRight } from 'lucide-react';
-import { sourcesEngine } from '../services/sourcesEngine';
-import MangaCard from './MangaCard';
+import React, { useEffect, useState } from 'react';
+import { Search, X, BookOpen } from 'lucide-react';
+import { suwayomi, imageUrl } from '../services/suwayomi';
 
 export default function GlobalSearchModal({ isOpen, onClose, onSelectManga }) {
   const [query, setQuery] = useState('');
+  const [lang, setLang] = useState('es');
+  const [sources, setSources] = useState([]);
   const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [status, setStatus] = useState('');
+  const [failed, setFailed] = useState(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setStatus('Cargando fuentes…');
+    suwayomi.sources().then(items => { if (active) { setSources(items.filter(s => s.id !== '0')); setStatus(''); } }).catch(e => { if (active) setStatus(e.message); });
+    return () => { active = false; };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    const term = query.trim();
+    setResults([]); setFailed(0);
+    if (term.length < 2) return () => { active = false; };
+    const timer = setTimeout(async () => {
+      const selected = sources.filter(s => lang === 'all' || s.lang === lang || s.lang === 'all');
+      if (!selected.length) { setStatus('No hay fuentes instaladas para este idioma.'); return; }
+      let index = 0, completed = 0, failures = 0;
+      setStatus(`Buscando en ${selected.length} fuentes…`);
+      const worker = async () => {
+        while (active && index < selected.length) {
+          const source = selected[index++];
+          try {
+            const mangas = await suwayomi.catalog(source.id, { type: 'SEARCH', query: term });
+            if (active && mangas.length) setResults(prev => [...prev, { source, mangas }]);
+          } catch { failures++; }
+          completed++;
+          if (active) { setFailed(failures); setStatus(completed === selected.length ? '' : `Buscando: ${completed} de ${selected.length} fuentes…`); }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, selected.length) }, worker));
+    }, 600);
+    return () => { active = false; clearTimeout(timer); };
+  }, [query, lang, sources, isOpen]);
 
   if (!isOpen) return null;
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-
-    setSearching(true);
-    try {
-      const res = await sourcesEngine.globalSearch(query);
-      setResults(res);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 120,
-        background: 'rgba(8, 7, 13, 0.85)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Search Header */}
-      <div
-        style={{
-          padding: 'calc(var(--sat) + 12px) 16px 14px',
-          borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          background: 'var(--bg-secondary)',
-        }}
-      >
-        <form
-          onSubmit={handleSearch}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: 'var(--radius-full)',
-            padding: '8px 14px',
-            border: '1px solid var(--border-active)',
-          }}
-        >
-          <Search size={19} color="var(--accent-hover)" />
-          <input
-            autoFocus
-            type="text"
-            placeholder="Buscar en todas las fuentes..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-primary)',
-              fontSize: '14.5px',
-              outline: 'none',
-            }}
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-            >
-              <X size={16} />
-            </button>
-          )}
-        </form>
-
-        <button
-          onClick={onClose}
-          className="btn-icon"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          <X size={22} />
-        </button>
-      </div>
-
-      {/* Results or Helper Area */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px',
-        }}
-      >
-        {searching ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <p style={{ fontSize: '14px' }}>Buscando en MangaDex y fuentes activas...</p>
-          </div>
-        ) : results.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {results.map((group) => (
-              <div key={group.sourceId}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <Layers size={17} color="var(--accent-hover)" />
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {group.sourceName}
-                  </h3>
-                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                    ({group.mangas.length} resultados)
-                  </span>
-                </div>
-
-                <div className="manga-grid">
-                  {group.mangas.map((manga) => (
-                    <MangaCard
-                      key={manga.id}
-                      manga={manga}
-                      onClick={(m) => {
-                        onClose();
-                        onSelectManga(m);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : query && !searching ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No se encontraron resultados para "{query}". Presiona Enter o prueba con otro título.
-          </div>
-        ) : (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            <p style={{ fontSize: '14px', lineHeight: 1.6 }}>
-              Escribe el nombre de un manga (ej. <em>Solo Leveling, One Piece, Frieren</em>) para buscar simultáneamente en todas las extensiones instaladas.
-            </p>
-          </div>
-        )}
-      </div>
+  return <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ padding: 'calc(var(--sat) + 12px) 16px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="su-search" style={{ flex: 1 }}><Search size={18} /><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar en fuentes instaladas…" /><button type="button" onClick={() => setQuery('')} aria-label="Borrar búsqueda"><X size={15} /></button></div>
+      <button className="btn-icon" onClick={onClose} aria-label="Cerrar"><X size={22} /></button>
     </div>
-  );
+    <div className="su-filters">{[{id:'es', label:'Español'}, {id:'en', label:'English'}, {id:'all', label:'Todos'}].map(option => <button key={option.id} className={lang === option.id ? 'active' : ''} onClick={() => setLang(option.id)}>{option.label}</button>)}</div>
+    <div style={{ overflowY: 'auto', padding: '0 16px 30px', flex: 1 }}>
+      {status && <p style={{ color:'var(--text-secondary)', fontSize:13 }}>{status}</p>}
+      {failed > 0 && <p style={{ color:'var(--text-secondary)', fontSize:12 }}>No se pudo buscar en {failed} {failed === 1 ? 'fuente' : 'fuentes'}; las demás siguen disponibles.</p>}
+      {results.map(group => <section key={group.source.id} style={{ marginBottom:24 }}><h3 style={{ fontSize:15, margin:'14px 0' }}>{group.source.displayName} · {group.source.lang}</h3><div className="manga-grid">{group.mangas.map(manga => <button key={manga.id} className="su-manga" onClick={() => { onSelectManga({ source: group.source, manga }); onClose(); }}>{manga.thumbnailUrl ? <img src={imageUrl(manga.thumbnailUrl)} alt="" loading="lazy" onError={e => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="su-cover-empty"><BookOpen /></span>}<span>{manga.title}</span></button>)}</div></section>)}
+      {!status && !results.length && <p className="su-empty">{query.trim().length < 2 ? 'Escribe al menos dos letras para buscar.' : failed ? 'No hubo resultados disponibles. Algunas fuentes no respondieron.' : 'No se encontraron resultados.'}</p>}
+    </div>
+  </div>;
 }

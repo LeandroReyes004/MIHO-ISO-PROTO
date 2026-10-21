@@ -5,7 +5,7 @@ import './SuwayomiBrowse.css';
 
 const language = (code) => ({ es: 'Español', en: 'English', all: 'Multi-idioma', localsourcelang: 'Archivos locales' }[code] || code.toUpperCase());
 
-export default function SuwayomiBrowse() {
+export default function SuwayomiBrowse({ searchSelection, onSelectionHandled }) {
   const [tab, setTab] = useState('sources');
   const [sources, setSources] = useState([]);
   const [extensions, setExtensions] = useState([]);
@@ -32,6 +32,7 @@ export default function SuwayomiBrowse() {
   };
   const refresh = async () => { const [s, e, r] = await Promise.all([suwayomi.sources(), suwayomi.extensions(), suwayomi.repos()]); setSources(s); setExtensions(e); setRepos(r); };
   useEffect(() => { run(refresh); }, []);
+  useEffect(() => { if (!searchSelection) return; const { source: selectedSource, manga: selectedManga } = searchSelection; setSource(selectedSource); setManga(null); setPages(null); setMangas([]); setQuery(''); onSelectionHandled(); run(async () => { setSourceDetails(await suwayomi.sourceDetails(selectedSource.id)); setManga(await suwayomi.chapters(selectedManga.id)); }); }, [searchSelection]);
   const filtered = extensions.filter(e => (lang === 'all' || e.lang === lang || e.lang === 'all') && e.name.toLowerCase().includes(query.toLowerCase()));
   const shownSources = sources.filter(s => lang === 'all' || s.lang === lang || s.lang === 'all' || s.id === '0');
   const openSource = (s) => { setSource(s); setQuery(''); setMangas([]); setSourceDetails(null); setFilterValues({}); setShowFilters(false); setCatalogTab('POPULAR'); run(async () => { setSourceDetails(await suwayomi.sourceDetails(s.id)); setMangas(await suwayomi.catalog(s.id)); }); };

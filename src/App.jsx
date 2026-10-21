@@ -16,6 +16,7 @@ import { storage } from './services/storage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('library');
+  const [searchSelection, setSearchSelection] = useState(null);
   const [library, setLibrary] = useState(storage.getLibrary());
   const [categories, setCategories] = useState(storage.getCategories());
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -221,7 +222,7 @@ export default function App() {
         );
       case 'browse':
         return (
-          <SuwayomiBrowse />
+          <SuwayomiBrowse searchSelection={searchSelection} onSelectionHandled={() => setSearchSelection(null)} />
         );
       case 'more':
         return (
@@ -347,7 +348,7 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onSelectManga={handleOpenManga}
+        onSelectManga={(selection) => { setSelectedManga(null); setSearchSelection(selection); setActiveTab('browse'); }}
       />
 
       {/* Library Filter Modal */}
