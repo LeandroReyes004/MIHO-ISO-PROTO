@@ -289,9 +289,9 @@ export const storage = {
   getLibrary: () => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.LIBRARY);
-      return data ? JSON.parse(data) : INITIAL_MANGAS;
+      return data ? JSON.parse(data) : [];
     } catch {
-      return INITIAL_MANGAS;
+      return [];
     }
   },
   saveLibrary: (mangas) => {
@@ -339,20 +339,7 @@ export const storage = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.HISTORY);
       if (data) return JSON.parse(data);
-      return [
-        {
-          id: 'hist-1',
-          mangaId: 'berserk',
-          mangaTitle: 'Berserk',
-          cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
-          chapterId: 'd120a2fb-67b7-4b3f-b551-ab973ac66a85',
-          chapterNumber: 1,
-          chapterTitle: 'Capítulo 1 - El Espadachín Negro',
-          page: 5,
-          totalPages: 90,
-          readAt: Date.now() - 3600000 * 2,
-        }
-      ];
+      return [];
     } catch {
       return [];
     }

@@ -12,7 +12,7 @@ import SuwayomiBrowse from './views/SuwayomiBrowse';
 import MoreView from './views/MoreView';
 import MangaDetailsView from './views/MangaDetailsView';
 
-import { storage, INITIAL_UPDATES } from './services/storage';
+import { storage } from './services/storage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('library');
@@ -20,7 +20,7 @@ export default function App() {
   const [categories, setCategories] = useState(storage.getCategories());
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [history, setHistory] = useState(storage.getHistory());
-  const [updates, setUpdates] = useState(INITIAL_UPDATES);
+  const [updates, setUpdates] = useState([]);
   const [settings, setSettings] = useState(storage.getSettings());
 
   // Views & modals state

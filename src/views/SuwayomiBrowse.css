@@ -45,3 +45,5 @@
 .su-catalog-filters input:not([type=checkbox]), .su-catalog-filters select { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px; max-width: 100%; }
 .su-catalog-filters fieldset { display: grid; gap: 10px; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; }
 .su-catalog-filters button { border: 0; border-radius: 8px; padding: 9px; background: var(--accent-primary); color: white; }
+
+.su-scroll-next { position: fixed; right: 18px; bottom: calc(var(--nav-height) + var(--sab) + 18px); z-index: 30; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--accent-primary); color: white; font-size: 24px !important; box-shadow: 0 3px 14px #0008; }
