@@ -44,7 +44,7 @@ export const suwayomi = {
     await graphql('mutation { fetchExtensions(input: {}) { extensionStores { indexUrl } } }');
   },
   async sourceDetails(id) {
-    const fields = `__typename ... on CheckBoxFilter { name default } ... on TriStateFilter { name default } ... on TextFilter { name default } ... on SelectFilter { name default values } ... on SortFilter { name default { index ascending } values } ... on HeaderFilter { name } ... on SeparatorFilter { name }`;
+    const fields = `__typename ... on CheckBoxFilter { name checkboxDefault: default } ... on TriStateFilter { name triStateDefault: default } ... on TextFilter { name textDefault: default } ... on SelectFilter { name selectDefault: default values } ... on SortFilter { name sortDefault: default { index ascending } values } ... on HeaderFilter { name } ... on SeparatorFilter { name }`;
     const data = await graphql(`query($id: LongString!) { source(id: $id) { supportsLatest filters { ${fields} ... on GroupFilter { name filters { ${fields} } } } } }`, { id });
     return data.source;
   },
