@@ -75,3 +75,8 @@
 .su-chapter-date { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 11px; }
 
 .su-more { display: flex; justify-content: center; padding: 20px; }
+
+.su-reader-nav { position: fixed; z-index: 31; bottom: calc(var(--nav-height) + var(--sab) + 75px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; width: min(94%, 500px); padding: 8px; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-secondary); box-shadow: 0 3px 14px #0008; }
+.su-reader-nav button, .su-reader-nav select { border: 0; border-radius: 8px; padding: 8px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 12px; }
+.su-reader-nav select { flex: 1; min-width: 0; }
+.su-reader-nav button:disabled { opacity: .4; }

@@ -32,6 +32,6 @@ export const offline = {
       if (!blob.type.startsWith('image/')) throw new Error('La fuente no devolvió una imagen válida.');
       images.push(blob); onProgress(images.length, urls.length);
     }
-    await transaction('readwrite', store => store.put({ id: chapter.id, name: chapter.name, mangaTitle, images, savedAt: Date.now() }));
+    await transaction('readwrite', store => store.put({ id: chapter.id, name: chapter.name, chapterNumber: chapter.chapterNumber, mangaTitle, images, savedAt: Date.now() }));
   },
 };
