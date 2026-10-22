@@ -33,8 +33,8 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectManga }) {
         while (active && index < selected.length) {
           const source = selected[index++];
           try {
-            const mangas = await suwayomi.catalog(source.id, { type: 'SEARCH', query: term });
-            if (active && mangas.length) setResults(prev => [...prev, { source, mangas }]);
+            const page = await suwayomi.catalogPage(source.id, { type: 'SEARCH', query: term });
+            if (active && page.mangas.length) setResults(prev => [...prev, { source, mangas: page.mangas, page: 1, hasNextPage: page.hasNextPage }]);
           } catch { failures++; }
           completed++;
           if (active) { setFailed(failures); setStatus(completed === selected.length ? '' : `Buscando: ${completed} de ${selected.length} fuentes…`); }
@@ -44,6 +44,14 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectManga }) {
     }, 600);
     return () => { active = false; clearTimeout(timer); };
   }, [query, lang, sources, isOpen]);
+
+  const loadMore = async (group) => {
+    setResults(prev => prev.map(g => g.source.id === group.source.id ? { ...g, loading: true, error: '' } : g));
+    try {
+      const result = await suwayomi.catalogPage(group.source.id, { type: 'SEARCH', query: query.trim(), page: group.page + 1 });
+      setResults(prev => prev.map(g => { if (g.source.id !== group.source.id) return g; const seen = new Set(g.mangas.map(m => m.id)); return { ...g, mangas: [...g.mangas, ...result.mangas.filter(m => !seen.has(m.id))], page: group.page + 1, hasNextPage: result.hasNextPage, loading: false }; }));
+    } catch { setResults(prev => prev.map(g => g.source.id === group.source.id ? { ...g, loading: false, error: 'No se pudieron cargar más resultados.' } : g)); }
+  };
 
   if (!isOpen) return null;
   return <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
@@ -55,7 +63,7 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectManga }) {
     <div style={{ overflowY: 'auto', padding: '0 16px 30px', flex: 1 }}>
       {status && <p style={{ color:'var(--text-secondary)', fontSize:13 }}>{status}</p>}
       {failed > 0 && <p style={{ color:'var(--text-secondary)', fontSize:12 }}>No se pudo buscar en {failed} {failed === 1 ? 'fuente' : 'fuentes'}; las demás siguen disponibles.</p>}
-      {results.map(group => <section key={group.source.id} style={{ marginBottom:24 }}><h3 style={{ fontSize:15, margin:'14px 0' }}>{group.source.displayName} · {group.source.lang}</h3><div className="manga-grid">{group.mangas.map(manga => <button key={manga.id} className="su-manga" onClick={() => { onSelectManga({ source: group.source, manga }); onClose(); }}>{manga.thumbnailUrl ? <img src={imageUrl(manga.thumbnailUrl)} alt="" loading="lazy" onError={e => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="su-cover-empty"><BookOpen /></span>}<span>{manga.title}</span></button>)}</div></section>)}
+      {results.map(group => <section key={group.source.id} style={{ marginBottom:24 }}><h3 style={{ fontSize:15, margin:'14px 0' }}>{group.source.displayName} · {group.source.lang}</h3><div className="manga-grid">{group.mangas.map(manga => <button key={manga.id} className="su-manga" onClick={() => { onSelectManga({ source: group.source, manga }); onClose(); }}>{manga.thumbnailUrl ? <img src={imageUrl(manga.thumbnailUrl)} alt="" loading="lazy" onError={e => { e.currentTarget.style.visibility = 'hidden'; }} /> : <span className="su-cover-empty"><BookOpen /></span>}<span>{manga.title}</span></button>)}</div>{group.error && <p>{group.error}</p>}{group.hasNextPage && <div className="su-more"><button className="su-install" disabled={group.loading} onClick={() => loadMore(group)}>{group.loading ? 'Cargando…' : 'Cargar más resultados'}</button></div>}</section>)}
       {!status && !results.length && <p className="su-empty">{query.trim().length < 2 ? 'Escribe al menos dos letras para buscar.' : failed ? 'No hubo resultados disponibles. Algunas fuentes no respondieron.' : 'No se encontraron resultados.'}</p>}
     </div>
   </div>;

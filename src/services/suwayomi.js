@@ -48,9 +48,12 @@ export const suwayomi = {
     const data = await graphql(`query($id: LongString!) { source(id: $id) { supportsLatest filters { ${fields} ... on GroupFilter { name filters { ${fields} } } } } }`, { id });
     return data.source;
   },
-  async catalog(source, { query = '', type = 'POPULAR', filters = [] } = {}) {
-    const data = await graphql('mutation($input: FetchSourceMangaInput!) { fetchSourceManga(input: $input) { mangas { id title thumbnailUrl } } }', { input: { source, page: 1, type, ...(type === 'SEARCH' ? { query, filters } : {}) } });
-    return data.fetchSourceManga.mangas;
+  async catalogPage(source, { query = '', type = 'POPULAR', filters = [], page = 1 } = {}) {
+    const data = await graphql('mutation($input: FetchSourceMangaInput!) { fetchSourceManga(input: $input) { hasNextPage mangas { id title thumbnailUrl } } }', { input: { source, page, type, ...(type === 'SEARCH' ? { query, filters } : {}) } });
+    return data.fetchSourceManga;
+  },
+  async catalog(source, options = {}) {
+    return (await this.catalogPage(source, options)).mangas;
   },
   async chapters(id) {
     const data = await graphql('mutation($input: FetchMangaAndChaptersInput!) { fetchMangaAndChapters(input: $input) { manga { id title description author thumbnailUrl } chapters { id name chapterNumber uploadDate } } }', { input: { id, fetchManga: true, fetchChapters: true } });
