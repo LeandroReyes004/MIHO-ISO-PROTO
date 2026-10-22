@@ -29,6 +29,8 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled }) 
   const [showDownloads, setShowDownloads] = useState(false);
   const [progress, setProgress] = useState('');
   const [offlineUrls, setOfflineUrls] = useState([]);
+  const [newChapterIds, setNewChapterIds] = useState([]);
+  const [lastChapterCheck, setLastChapterCheck] = useState(null);
   const refreshDownloads = async () => setDownloads(await offline.list());
   useEffect(() => { refreshDownloads().catch(() => {}); }, []);
   useEffect(() => () => offlineUrls.forEach(URL.revokeObjectURL), [offlineUrls]);
@@ -43,9 +45,35 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled }) 
   const refresh = async () => { const [s, e, r] = await Promise.all([suwayomi.sources(), suwayomi.extensions(), suwayomi.repos()]); setSources(s); setExtensions(e); setRepos(r); };
   useEffect(() => { run(refresh); }, []);
   useEffect(() => { if (!searchSelection) return; const { source: selectedSource, manga: selectedManga } = searchSelection; setSource(selectedSource); setManga(null); setPages(null); setMangas([]); setQuery(''); onSelectionHandled(); run(async () => { setSourceDetails(await suwayomi.sourceDetails(selectedSource.id)); setManga(await suwayomi.chapters(selectedManga.id)); }); }, [searchSelection]);
+  useEffect(() => {
+    if (!manga?.manga?.id || pages || !navigator.onLine) return;
+    const id = manga.manga.id;
+    const check = async () => {
+      try {
+        const updated = await suwayomi.chapters(id);
+        setManga(previous => {
+          if (!previous || previous.manga.id !== id) return previous;
+          const existing = new Set(previous.chapters.map(ch => ch.id));
+          const added = updated.chapters.filter(ch => !existing.has(ch.id)).map(ch => ch.id);
+          if (added.length) setNewChapterIds(current => [...new Set([...current, ...added])]);
+          return updated;
+        });
+        setLastChapterCheck(Date.now());
+      } catch { /* Keep the previous list when offline or a source fails. */ }
+    };
+    const timer = setInterval(check, 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [manga?.manga?.id, !!pages]);
+  const refreshChapters = () => run(async () => {
+    const updated = await suwayomi.chapters(manga.manga.id);
+    const existing = new Set(manga.chapters.map(ch => ch.id));
+    const added = updated.chapters.filter(ch => !existing.has(ch.id)).map(ch => ch.id);
+    setNewChapterIds(current => [...new Set([...current, ...added])]);
+    setManga(updated); setLastChapterCheck(Date.now());
+  });
   const filtered = extensions.filter(e => (lang === 'all' || e.lang === lang || e.lang === 'all') && e.name.toLowerCase().includes(query.toLowerCase()));
   const shownSources = sources.filter(s => lang === 'all' || s.lang === lang || s.lang === 'all' || s.id === '0');
-  const openSource = (s) => { setSource(s); setQuery(''); setMangas([]); setSourceDetails(null); setFilterValues({}); setShowFilters(false); setCatalogTab('POPULAR'); run(async () => { setSourceDetails(await suwayomi.sourceDetails(s.id)); setMangas(await suwayomi.catalog(s.id)); }); };
+  const openSource = (s) => { setSource(s); setNewChapterIds([]); setLastChapterCheck(null); setQuery(''); setMangas([]); setSourceDetails(null); setFilterValues({}); setShowFilters(false); setCatalogTab('POPULAR'); run(async () => { setSourceDetails(await suwayomi.sourceDetails(s.id)); setMangas(await suwayomi.catalog(s.id)); }); };
   const filterChanges = () => Object.entries(filterValues).map(([key, value]) => { const [position, child] = key.split('.').map(Number); return child === undefined ? { position, ...value } : { position, groupChange: { position: child, ...value } }; });
   const loadCatalog = (type, useFilters = false) => { setCatalogTab(type); run(async () => { setMangas([]); setMangas(await suwayomi.catalog(source.id, { type, query: query.trim(), filters: useFilters ? filterChanges() : [] })); }); };
   const renderFilter = (f, key) => {
@@ -66,8 +94,8 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled }) 
   return <div className="su-browse">
     {error && <div className="su-error" role="alert">{error} {error.includes('Inicia sesión') && <a href="/suwayomi/" target="_blank" rel="noreferrer">Iniciar sesión</a>}</div>}
     {busy && <div className="su-loading"><RefreshCw size={15} className="su-spin" /> {progress || 'Cargando…'}</div>}
-    {pages ? <>{back(() => { setPages(null); setOfflineUrls([]); }, showDownloads ? 'Descargas' : 'Capítulos')}<div className="su-pages">{pages.map((url, i) => <img key={i} src={url} alt={`Página ${i + 1}`} loading="lazy" />)}</div><button className="su-scroll-next" onClick={e => { const main = e.currentTarget.closest('main'); const container = main && getComputedStyle(main).overflowY === 'auto' ? main : window; container.scrollBy({ top: Math.round((container === window ? window.innerHeight : main.clientHeight) * 0.8), behavior: 'smooth' }); }} aria-label="Bajar en el capítulo">↓</button></>
-      : manga ? <>{back(() => setManga(null), 'Catálogo')}<div className="su-detail"><h2>{manga.manga.title}</h2><p>{manga.manga.description || 'Sin descripción disponible.'}</p></div><div className="su-section-title">Capítulos · {manga.chapters.length}</div>{manga.chapters.map(ch => { const saved = downloads.find(d => d.id === ch.id); return <div className="su-row su-chapter" key={ch.id}><button className="su-chapter-open" onClick={() => saved ? openOffline(saved) : run(async () => setPages(await suwayomi.pages(ch.id)))}><span>{ch.name}{saved && <small className="su-saved">✓ Descargado</small>}</span><ChevronRight size={18} /></button><button className="su-install" disabled={busy || !!saved} onClick={() => downloadChapter(ch)} aria-label={`Descargar ${ch.name}`}><Download size={16} /> {saved ? 'Guardado' : 'Descargar'}</button></div>; })}</>
+    {pages ? <>{back(() => { setPages(null); setOfflineUrls([]); }, showDownloads ? 'Descargas' : 'Capítulos')}<button className="su-reader-back" onClick={() => { setPages(null); setOfflineUrls([]); }}><ArrowLeft size={18} /> Volver</button><div className="su-pages">{pages.map((url, i) => <img key={i} src={url} alt={`Página ${i + 1}`} loading="lazy" />)}</div><button className="su-scroll-next" onClick={e => { const main = e.currentTarget.closest('main'); const container = main && getComputedStyle(main).overflowY === 'auto' ? main : window; container.scrollBy({ top: Math.round((container === window ? window.innerHeight : main.clientHeight) * 0.8), behavior: 'smooth' }); }} aria-label="Bajar en el capítulo">↓</button></>
+      : manga ? <>{back(() => setManga(null), 'Catálogo')}<div className="su-detail"><h2>{manga.manga.title}</h2><p>{manga.manga.description || 'Sin descripción disponible.'}</p></div><div className="su-section-title">Capítulos · {manga.chapters.length} <button className="su-update-chapters" disabled={busy} onClick={refreshChapters}>↻ Actualizar capítulos</button>{lastChapterCheck && <span> · Actualizado</span>}</div>{manga.chapters.map(ch => { const saved = downloads.find(d => d.id === ch.id); return <div className="su-row su-chapter" key={ch.id}><button className="su-chapter-open" onClick={() => saved ? openOffline(saved) : run(async () => setPages(await suwayomi.pages(ch.id)))}><span>{ch.name}{newChapterIds.includes(ch.id) && <small className="su-saved">● Nuevo</small>}{saved && <small className="su-saved">✓ Descargado</small>}</span><ChevronRight size={18} /></button><button className="su-install" disabled={busy || !!saved} onClick={() => downloadChapter(ch)} aria-label={`Descargar ${ch.name}`}><Download size={16} /> {saved ? 'Guardado' : 'Descargar'}</button></div>; })}</>
       : showDownloads ? <>{back(() => setShowDownloads(false), 'Explorar')}<div className="su-detail"><h2>Descargas en este dispositivo</h2><p>Disponibles sin conexión una vez guardadas.</p></div>{downloads.length === 0 && <p className="su-empty">Todavía no has descargado capítulos.</p>}{downloads.map(item => <div className="su-row su-chapter" key={item.id}><button className="su-chapter-open" onClick={() => openOffline(item)}><span>{item.mangaTitle}<small className="su-saved">{item.name} · ✓ Descargado</small></span><ChevronRight size={18} /></button><button className="su-uninstall" onClick={() => run(async () => { await offline.remove(item.id); await refreshDownloads(); })}>Eliminar</button></div>)}</>
       : source ? <>{back(() => { setSource(null); setMangas([]); setQuery(''); }, 'Fuentes')}<div className="su-detail"><h2>{source.displayName}</h2><p>Catálogo de la fuente · {language(source.lang)}</p></div><form className="su-search" onSubmit={e => { e.preventDefault(); loadCatalog('SEARCH', true); }}><Search size={18} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder={`Buscar en ${source.displayName}...`} /><button type="submit">Buscar</button></form><div className="su-filters"><button className={catalogTab === 'POPULAR' ? 'active' : ''} onClick={() => loadCatalog('POPULAR')}>Populares</button><button className={catalogTab === 'LATEST' ? 'active' : ''} disabled={!sourceDetails?.supportsLatest || busy} onClick={() => loadCatalog('LATEST')}>Recientes</button><button className={showFilters ? 'active' : ''} onClick={() => setShowFilters(!showFilters)}>Filtros</button></div>{showFilters && <div className="su-catalog-filters">{sourceDetails?.filters?.length ? sourceDetails.filters.map((f, i) => renderFilter(f, String(i))) : <p>Esta fuente no ofrece filtros.</p>}<button disabled={busy} onClick={() => loadCatalog('SEARCH', true)}>Aplicar filtros</button><button disabled={busy} onClick={() => setFilterValues({})}>Restablecer</button></div>}<div className="manga-grid">{mangas.map(m => <button className="su-manga" key={m.id} onClick={() => run(async () => setManga(await suwayomi.chapters(m.id)))}>{m.thumbnailUrl ? <img src={imageUrl(m.thumbnailUrl)} alt="" loading="lazy" /> : <span className="su-cover-empty"><BookOpen /></span>}<span>{m.title}</span></button>)}</div>{!busy && !error && !mangas.length && <p className="su-empty">No se encontraron títulos en esta fuente.</p>}</>
       : <><div className="su-tabs"><button className={tab === 'sources' ? 'active' : ''} onClick={() => { setTab('sources'); setQuery(''); }}>Fuentes <span>{sources.length}</span></button><button className={tab === 'extensions' ? 'active' : ''} onClick={() => { setTab('extensions'); setQuery(''); }}>Extensiones <span>{extensions.length}</span></button><button className="su-repos" onClick={() => setShowDownloads(true)}><Download size={15} /> {downloads.length}</button><button className="su-repos" onClick={() => setShowRepo(!showRepo)}><Server size={15} /> Repos</button><button className="su-refresh" aria-label="Actualizar fuentes" onClick={() => run(refresh)}><RefreshCw size={17} /></button></div>
