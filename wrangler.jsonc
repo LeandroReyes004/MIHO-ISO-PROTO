@@ -3,5 +3,5 @@
   "main": "worker.js",
   "compatibility_date": "2026-10-19",
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/suwayomi", "/suwayomi/*"] },
-  "vars": { "SUWAYOMI_URL": "https://ten-rolling-miami-mesa.trycloudflare.com" }
+  "vars": { "SUWAYOMI_URL": "https://mihon-api.scancrimson.com" }
 }
