@@ -71,3 +71,5 @@
 .su-chapter-order select { max-width: 65%; border: 1px solid var(--border-subtle); border-radius: 9px; padding: 8px; background: var(--bg-secondary); color: var(--text-primary); }
 
 .su-read-toggle { border: 0; background: transparent; color: var(--text-secondary); font-size: 11px !important; padding: 5px; }
+
+.su-chapter-date { display: block; margin-top: 5px; color: var(--text-tertiary); font-size: 11px; }

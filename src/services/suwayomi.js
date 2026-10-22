@@ -53,7 +53,7 @@ export const suwayomi = {
     return data.fetchSourceManga.mangas;
   },
   async chapters(id) {
-    const data = await graphql('mutation($input: FetchMangaAndChaptersInput!) { fetchMangaAndChapters(input: $input) { manga { id title description author thumbnailUrl } chapters { id name chapterNumber } } }', { input: { id, fetchManga: true, fetchChapters: true } });
+    const data = await graphql('mutation($input: FetchMangaAndChaptersInput!) { fetchMangaAndChapters(input: $input) { manga { id title description author thumbnailUrl } chapters { id name chapterNumber uploadDate } } }', { input: { id, fetchManga: true, fetchChapters: true } });
     return data.fetchMangaAndChapters;
   },
   async pages(chapterId) {

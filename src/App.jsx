@@ -19,6 +19,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('library');
   const [searchSelection, setSearchSelection] = useState(null);
   const [openedFromLibrary, setOpenedFromLibrary] = useState(false);
+  const [openedFromSearch, setOpenedFromSearch] = useState(false);
   const [library, setLibrary] = useState(storage.getLibrary());
   const [categories, setCategories] = useState(storage.getCategories());
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -81,6 +82,7 @@ export default function App() {
     if (typeof mangaOrId === 'object' && mangaOrId.suwayomiId != null) {
       setSelectedManga(null);
       setOpenedFromLibrary(true);
+      setOpenedFromSearch(false);
       setSearchSelection({ source: mangaOrId.suwayomiSource, manga: { id: mangaOrId.suwayomiId } });
       setActiveTab('browse');
       return;
@@ -265,7 +267,7 @@ export default function App() {
         );
       case 'browse':
         return (
-          <SuwayomiBrowse searchSelection={searchSelection} onSelectionHandled={() => setSearchSelection(null)} library={library} onToggleLibrary={handleToggleLibrary} onBackToLibrary={openedFromLibrary ? () => { setOpenedFromLibrary(false); setActiveTab('library'); } : null} />
+          <SuwayomiBrowse searchSelection={searchSelection} onSelectionHandled={() => setSearchSelection(null)} library={library} onToggleLibrary={handleToggleLibrary} onBackToLibrary={openedFromLibrary ? () => { setOpenedFromLibrary(false); setActiveTab('library'); } : null} onBackToSearch={openedFromSearch ? () => { setOpenedFromSearch(false); setIsSearchOpen(true); } : null} />
         );
       case 'more':
         return (
@@ -360,7 +362,7 @@ export default function App() {
         {!selectedManga && !readingSession && (
           <BottomNav
             activeTab={openedFromLibrary && activeTab === 'browse' ? 'library' : activeTab}
-            setActiveTab={(tab) => { setOpenedFromLibrary(false); setActiveTab(tab); }}
+            setActiveTab={(tab) => { setOpenedFromLibrary(false); setOpenedFromSearch(false); setActiveTab(tab); }}
             unreadCount={totalUnreadCount}
             updatesCount={updatesBadgeCount}
             extensionUpdates={1}
@@ -391,7 +393,7 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onSelectManga={(selection) => { setOpenedFromLibrary(false); setSelectedManga(null); setSearchSelection(selection); setActiveTab('browse'); }}
+        onSelectManga={(selection) => { setOpenedFromLibrary(false); setOpenedFromSearch(true); setSelectedManga(null); setSearchSelection(selection); setActiveTab('browse'); }}
       />
 
       {/* Library Filter Modal */}
