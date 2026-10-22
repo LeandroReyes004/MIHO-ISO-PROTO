@@ -53,3 +53,16 @@
 
 .su-reader-back { position: fixed; left: 18px; bottom: calc(var(--nav-height) + var(--sab) + 18px); z-index: 30; border: 1px solid var(--border-active); border-radius: 999px; background: var(--bg-secondary); color: var(--text-primary); padding: 10px 14px; display: flex; align-items: center; gap: 6px; box-shadow: 0 3px 14px #0008; }
 .su-update-chapters { margin-left: 10px; background: transparent; border: 0; color: var(--accent-hover); }
+
+.su-manga-detail { padding: 12px 0 2px; }
+.su-detail-hero { display: flex; align-items: center; gap: 18px; }
+.su-detail-hero > div { min-width: 0; }
+.su-detail-cover { width: 120px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 14px; flex: 0 0 120px; background: var(--bg-secondary); }
+.su-detail-author { color: var(--accent-hover) !important; margin-top: 8px !important; }
+.su-detail-source { display: inline-block; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 999px; padding: 4px 9px; font-size: 12px; }
+.su-detail-actions { display: flex; gap: 10px; margin: 22px 0 16px; }
+.su-detail-actions button { flex: 1; display: flex; justify-content: center; align-items: center; gap: 7px; border-radius: 999px; padding: 12px 8px; font-weight: 700; font-size: 13px; }
+.su-library-add, .su-library-active { border: 1px solid var(--border-active); background: var(--bg-secondary); color: var(--text-primary); }
+.su-library-active { color: var(--accent-hover); }
+.su-read-first { border: 0; background: var(--accent-gradient); color: white; }
+.su-detail .su-description { padding: 14px; border: 1px solid var(--border-subtle); border-radius: 14px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 13px; white-space: pre-wrap; }

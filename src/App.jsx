@@ -46,6 +46,12 @@ export default function App() {
 
   // Open manga details
   const handleOpenManga = (mangaOrId) => {
+    if (typeof mangaOrId === 'object' && mangaOrId.suwayomiId != null) {
+      setSelectedManga(null);
+      setSearchSelection({ source: mangaOrId.suwayomiSource, manga: { id: mangaOrId.suwayomiId } });
+      setActiveTab('browse');
+      return;
+    }
     if (typeof mangaOrId === 'string') {
       const found = library.find(m => m.id === mangaOrId) || {
         id: mangaOrId,
@@ -222,7 +228,7 @@ export default function App() {
         );
       case 'browse':
         return (
-          <SuwayomiBrowse searchSelection={searchSelection} onSelectionHandled={() => setSearchSelection(null)} />
+          <SuwayomiBrowse searchSelection={searchSelection} onSelectionHandled={() => setSearchSelection(null)} library={library} onToggleLibrary={handleToggleLibrary} />
         );
       case 'more':
         return (
