@@ -13,6 +13,7 @@ import MoreView from './views/MoreView';
 import MangaDetailsView from './views/MangaDetailsView';
 
 import { storage } from './services/storage';
+import { suwayomi } from './services/suwayomi';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('library');
@@ -33,7 +34,9 @@ export default function App() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Filter & sort
-  const [sortBy, setSortBy] = useState('lastRead');
+  const [sortBy, setSortBy] = useState('manual');
+  const [libraryUpdating, setLibraryUpdating] = useState(false);
+  const [libraryMessage, setLibraryMessage] = useState('');
   const [filters, setFilters] = useState({ unreadOnly: false, startedOnly: false, completedOnly: false });
 
   // Reload data from storage
@@ -42,6 +45,34 @@ export default function App() {
     setCategories(storage.getCategories());
     setHistory(storage.getHistory());
     setSettings(storage.getSettings());
+  };
+
+  const refreshLibraryChapters = async () => {
+    const titles = storage.getLibrary().filter(m => m.suwayomiId != null);
+    if (!titles.length) { setLibraryMessage('Añade mangas de Suwayomi a tu biblioteca para buscar capítulos nuevos.'); return; }
+    setLibraryUpdating(true); setLibraryMessage('Buscando capítulos nuevos…');
+    let failures = 0, found = 0;
+    for (const item of titles) {
+      try {
+        const result = await suwayomi.chapters(item.suwayomiId);
+        const ids = result.chapters.map(ch => ch.id);
+        const known = item.knownChapterIds;
+        const count = Array.isArray(known) ? ids.filter(id => !known.includes(id)).length : 0;
+        found += count;
+        const current = storage.getLibrary();
+        const index = current.findIndex(m => m.id === item.id);
+        if (index >= 0) { current[index] = { ...current[index], knownChapterIds: ids, unreadCount: (current[index].unreadCount || 0) + count }; storage.saveLibrary(current); setLibrary(current); }
+      } catch { failures++; }
+    }
+    setLibraryMessage(`${found ? `${found} capítulos nuevos encontrados.` : 'No se encontraron capítulos nuevos.'}${failures ? ` No se pudieron actualizar ${failures} mangas.` : ''}`);
+    setLibraryUpdating(false);
+  };
+  const moveLibraryManga = (id, direction) => {
+    const current = storage.getLibrary();
+    const index = current.findIndex(m => m.id === id), next = index + direction;
+    if (index < 0 || next < 0 || next >= current.length) return;
+    [current[index], current[next]] = [current[next], current[index]];
+    storage.saveLibrary(current); setLibrary(current); setSortBy('manual');
   };
 
   // Open manga details
@@ -200,6 +231,10 @@ export default function App() {
             onMangaClick={handleOpenManga}
             onNavigateToBrowse={() => setActiveTab('browse')}
             viewMode={viewMode}
+            onRefresh={refreshLibraryChapters}
+            updating={libraryUpdating}
+            message={libraryMessage}
+            onMove={moveLibraryManga}
           />
         );
       case 'updates':

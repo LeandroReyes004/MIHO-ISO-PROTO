@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import MangaCard from '../components/MangaCard';
-import { BookOpen, Search, Compass, Plus } from 'lucide-react';
+import { BookOpen, Search, Compass, Plus, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function LibraryView({
   library = [],
@@ -10,8 +10,10 @@ export default function LibraryView({
   onMangaClick,
   onNavigateToBrowse,
   viewMode = 'grid',
+  onRefresh, updating, message, onMove,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [reordering, setReordering] = useState(false);
 
   // Filter by category and search term
   const filteredMangas = library.filter((manga) => {
@@ -44,16 +46,18 @@ export default function LibraryView({
         ))}
       </div>
 
+      <div style={{ display: 'flex', gap: 8, padding: '8px 16px' }}><button className="btn-secondary" disabled={updating} onClick={onRefresh}><RefreshCw size={16} /> {updating ? 'Actualizando…' : 'Actualizar'}</button><button className="btn-secondary" onClick={() => setReordering(!reordering)}>{reordering ? 'Listo' : 'Reorganizar'}</button></div>
+      {message && <p role="status" style={{ padding: '0 16px', color: 'var(--text-secondary)', fontSize: 12 }}>{message}</p>}
+      {reordering && <p style={{ padding: '4px 16px', color: 'var(--text-secondary)', fontSize: 12 }}>Usa las flechas para cambiar el orden de tu biblioteca.</p>}
       {/* Manga Grid or Empty State */}
       {filteredMangas.length > 0 ? (
         <div className={viewMode === 'grid' ? 'manga-grid' : 'manga-list'}>
           {filteredMangas.map((manga) => (
-            <MangaCard
-              key={manga.id}
+            <div key={manga.id} style={{ minWidth: 0 }}><MangaCard
               manga={manga}
               onClick={onMangaClick}
               viewMode={viewMode}
-            />
+            />{reordering && <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: 8 }}><button className="btn-secondary" aria-label={`Mover ${manga.title} antes`} onClick={() => onMove(manga.id, -1)}><ArrowUp size={16} /></button><button className="btn-secondary" aria-label={`Mover ${manga.title} después`} onClick={() => onMove(manga.id, 1)}><ArrowDown size={16} /></button></div>}</div>
           ))}
         </div>
       ) : (

@@ -91,7 +91,7 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled, li
   };
   const libraryId = manga ? `suwayomi:${manga.manga.id}` : null;
   const inLibrary = library.some(item => item.id === libraryId);
-  const toggleSaved = () => onToggleLibrary({ id: libraryId, suwayomiId: manga.manga.id, suwayomiSource: source, title: manga.manga.title, author: manga.manga.author || '', cover: imageUrl(manga.manga.thumbnailUrl), sourceName: source?.displayName || 'Suwayomi', type: 'Manga' });
+  const toggleSaved = () => onToggleLibrary({ id: libraryId, suwayomiId: manga.manga.id, suwayomiSource: source, title: manga.manga.title, author: manga.manga.author || '', cover: imageUrl(manga.manga.thumbnailUrl), sourceName: source?.displayName || 'Suwayomi', type: 'Manga', knownChapterIds: manga.chapters.map(ch => ch.id) });
   const back = (fn, label) => <button className="su-back" onClick={fn}><ArrowLeft size={19} /> {label}</button>;
 
   return <div className="su-browse">
