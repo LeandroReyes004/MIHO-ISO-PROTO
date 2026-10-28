@@ -80,3 +80,12 @@
 .su-reader-nav button, .su-reader-nav select { border: 0; border-radius: 8px; padding: 8px; background: var(--bg-tertiary); color: var(--text-primary); font-size: 12px; }
 .su-reader-nav select { flex: 1; min-width: 0; }
 .su-reader-nav button:disabled { opacity: .4; }
+
+.su-loading { display: grid; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); }
+.su-loading-text { display: flex; align-items: center; gap: 8px; }
+.su-progress { height: 7px; overflow: hidden; border-radius: 999px; background: var(--bg-tertiary); }
+.su-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--accent-gradient); transition: width .2s ease; }
+.su-batch-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 16px 12px; color: var(--text-secondary); font-size: 12px; }
+.su-batch-actions button { border: 1px solid var(--border-subtle); border-radius: 9px; padding: 7px 9px; background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; }
+.su-batch-actions .su-install { border: 0; color: white; }
+.su-chapter-select { width: 16px; height: 16px; accent-color: var(--accent-primary); flex: 0 0 auto; }

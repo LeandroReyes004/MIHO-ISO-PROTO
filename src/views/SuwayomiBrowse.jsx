@@ -34,6 +34,7 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled, li
   const [downloads, setDownloads] = useState([]);
   const [showDownloads, setShowDownloads] = useState(false);
   const [progress, setProgress] = useState('');
+  const [progressState, setProgressState] = useState(null);
   const [offlineUrls, setOfflineUrls] = useState([]);
   const [newChapterIds, setNewChapterIds] = useState([]);
   const [lastChapterCheck, setLastChapterCheck] = useState(null);
@@ -57,7 +58,7 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled, li
   useEffect(() => { refreshDownloads().catch(() => {}); }, []);
   useEffect(() => () => offlineUrls.forEach(URL.revokeObjectURL), [offlineUrls]);
   const openOffline = (item) => { setReadingChapter(item.id); setError(''); const urls = item.images.map(blob => URL.createObjectURL(blob)); setOfflineUrls(urls); setPages(urls); };
-  const downloadChapter = (ch) => run(async () => { try { setProgress('Preparando descarga…'); const urls = await suwayomi.pages(ch.id); await offline.download(ch, manga.manga.title, urls, (done, total) => setProgress(`Descargando ${done}/${total} páginas…`)); await refreshDownloads(); } finally { setProgress(''); } });
+  const downloadChapter = (ch) => run(async () => { try { setProgress('Preparando descarga…'); setProgressState({ done: 0, total: 1 }); const urls = await suwayomi.pages(ch.id); await offline.download(ch, manga.manga.title, urls, (done, total) => { setProgress(`Descargando ${done}/${total} páginas…`); setProgressState({ done, total }); }); await refreshDownloads(); } finally { setProgress(''); setProgressState(null); } });
   const writeCbz = async (item, selectedFolder) => {
     const blob = await offline.exportCbz(item);
     const folder = safeFileName(item.mangaTitle);
@@ -78,37 +79,41 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled, li
   };
   const exportChapter = (item) => run(async () => {
     setProgress('Creando archivo CBZ…');
+    setProgressState({ done: 0, total: 1 });
     try {
       if (window.showDirectoryPicker) {
         const selectedFolder = await window.showDirectoryPicker({ mode: 'readwrite' });
         await writeCbz(item, selectedFolder);
-        setProgress(`Guardado en ${safeFileName(item.mangaTitle)}`);
+        setProgress(`Guardado en ${safeFileName(item.mangaTitle)}`); setProgressState({ done: 1, total: 1 });
       } else {
         await writeCbz(item);
-        setProgress('Archivo CBZ descargado.');
+        setProgress('Archivo CBZ descargado.'); setProgressState({ done: 1, total: 1 });
       }
-    } finally { window.setTimeout(() => setProgress(''), 2500); }
+    } finally { window.setTimeout(() => { setProgress(''); setProgressState(null); }, 2500); }
   });
   const toggleChapter = (id) => setSelectedChapterIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   const downloadAndExportSelected = () => run(async () => {
     const chapters = manga.chapters.filter(ch => selectedChapterIds.includes(ch.id));
     if (!chapters.length) throw new Error('Selecciona al menos un capítulo.');
-    const selectedFolder = window.showDirectoryPicker ? await window.showDirectoryPicker({ mode: 'readwrite' }) : null;
-    for (let index = 0; index < chapters.length; index += 1) {
-      const chapter = chapters[index];
-      setProgress(`Procesando ${index + 1}/${chapters.length}: ${chapter.name}`);
-      let saved = downloads.find(item => item.id === chapter.id);
-      if (!saved) {
-        const urls = await suwayomi.pages(chapter.id);
-        await offline.download(chapter, manga.manga.title, urls, (done, total) => setProgress(`Capítulo ${index + 1}/${chapters.length}: ${done}/${total} páginas…`));
-        saved = await offline.get(chapter.id);
+    try {
+      setProgressState({ done: 0, total: chapters.length });
+      const selectedFolder = window.showDirectoryPicker ? await window.showDirectoryPicker({ mode: 'readwrite' }) : null;
+      for (let index = 0; index < chapters.length; index += 1) {
+        const chapter = chapters[index];
+        setProgress(`Procesando ${index + 1}/${chapters.length}: ${chapter.name}`);
+        let saved = downloads.find(item => item.id === chapter.id);
+        if (!saved) {
+          const urls = await suwayomi.pages(chapter.id);
+          await offline.download(chapter, manga.manga.title, urls, (done, total) => { setProgress(`Capítulo ${index + 1}/${chapters.length}: ${done}/${total} páginas…`); setProgressState({ done: index + (done / total), total: chapters.length }); });
+          saved = await offline.get(chapter.id);
+        }
+        await writeCbz(saved, selectedFolder);
+        setProgressState({ done: index + 1, total: chapters.length });
       }
-      await writeCbz(saved, selectedFolder);
-    }
-    await refreshDownloads();
-    setSelectedChapterIds([]);
-    setProgress(`${chapters.length} capítulos exportados en ${safeFileName(manga.manga.title)}.`);
-    window.setTimeout(() => setProgress(''), 3500);
+      await refreshDownloads();
+      setSelectedChapterIds([]);
+      setProgress(`${chapters.length} capítulos exportados en ${safeFileName(manga.manga.title)}.`);
+    } finally { window.setTimeout(() => { setProgress(''); setProgressState(null); }, 3500); }
   });
 
   const run = async (work) => {
@@ -182,7 +187,7 @@ export default function SuwayomiBrowse({ searchSelection, onSelectionHandled, li
 
   return <div className="su-browse">
     {error && <div className="su-error" role="alert">{error} {error.includes('Inicia sesión') && <a href="/suwayomi/" target="_blank" rel="noreferrer">Iniciar sesión</a>}</div>}
-    {busy && <div className="su-loading"><RefreshCw size={15} className="su-spin" /> {progress || 'Cargando…'}</div>}
+    {busy && <div className="su-loading"><div className="su-loading-text"><RefreshCw size={15} className="su-spin" /> <span>{progress || 'Cargando…'}</span></div><div className="su-progress" role="progressbar" aria-label="Progreso de descarga" aria-valuemin="0" aria-valuemax={progressState?.total || 1} aria-valuenow={progressState?.done || 0}><span style={{ width: `${Math.min(100, Math.max(0, ((progressState?.done || 0) / (progressState?.total || 1)) * 100))}%` }} /></div></div>}
     {pages ? <>{back(() => { setPages(null); setOfflineUrls([]); }, showDownloads ? 'Descargas' : 'Capítulos')}<button className="su-reader-back" onClick={() => { setPages(null); setOfflineUrls([]); }}><ArrowLeft size={18} /> Volver</button>{readerIndex >= 0 && <nav className="su-reader-nav" aria-label="Navegación de capítulos"><button disabled={busy || readerIndex === 0} onClick={() => jumpChapter(readerChapters[readerIndex - 1].id)}>‹ Anterior</button><select aria-label="Elegir capítulo" disabled={busy} value={String(readingChapter)} onChange={e => jumpChapter(e.target.value)}>{readerChapters.map(ch => <option value={String(ch.id)} key={ch.id}>{ch.name}</option>)}</select><button disabled={busy || readerIndex === readerChapters.length - 1} onClick={() => jumpChapter(readerChapters[readerIndex + 1].id)}>Siguiente ›</button></nav>}<div className="su-pages">{pages.map((url, i) => <img key={i} ref={i === pages.length - 1 ? lastPageRef : undefined} src={url} alt={`Página ${i + 1}`} loading="lazy" onLoad={e => { if (i === pages.length - 1 && readingChapter != null) { const rect = e.currentTarget.getBoundingClientRect(); if (rect.bottom <= window.innerHeight && rect.bottom > 0) markRead(readingChapter, true); } }} />)}</div><button className="su-scroll-next" onClick={e => { const main = e.currentTarget.closest('main'); const container = main && getComputedStyle(main).overflowY === 'auto' ? main : window; container.scrollBy({ top: Math.round((container === window ? window.innerHeight : main.clientHeight) * 0.8), behavior: 'smooth' }); }} aria-label="Bajar en el capítulo">↓</button></>
       : manga ? <>{back(() => { if (onBackToLibrary) onBackToLibrary(); else if (onBackToSearch) { setManga(null); onBackToSearch(); } else setManga(null); }, onBackToLibrary ? 'Biblioteca' : onBackToSearch ? 'Búsqueda' : 'Catálogo')}<div className="su-detail su-manga-detail"><div className="su-detail-hero">{manga.manga.thumbnailUrl ? <img className="su-detail-cover" src={imageUrl(manga.manga.thumbnailUrl)} alt="" /> : <span className="su-detail-cover su-cover-empty"><BookOpen /></span>}<div><h2>{manga.manga.title}</h2>{manga.manga.author && <p className="su-detail-author">{manga.manga.author}</p>}<span className="su-detail-source">{source?.displayName || 'Suwayomi'}</span></div></div><div className="su-detail-actions"><button className={inLibrary ? 'su-library-active' : 'su-library-add'} onClick={toggleSaved}><Bookmark size={17} /> {inLibrary ? 'En biblioteca' : 'Añadir a biblioteca'}</button>{manga.chapters.length > 0 && <button className="su-read-first" disabled={busy} onClick={() => { const ch = manga.chapters.reduce((first, current) => current.chapterNumber < first.chapterNumber ? current : first); const saved = downloads.find(d => d.id === ch.id); saved ? openOffline(saved) : run(async () => { const result = await suwayomi.pages(ch.id); setReadingChapter(ch.id); setPages(result); }); }}><Play size={16} /> Leer</button>}</div><p className="su-description">{manga.manga.description || 'Sin descripción disponible.'}</p></div><div className="su-section-title">Capítulos · {manga.chapters.length} <button className="su-update-chapters" disabled={busy} onClick={refreshChapters}>↻ Actualizar capítulos</button>{lastChapterCheck && <span> · Actualizado</span>}</div><div className="su-batch-actions"><span>{selectedChapterIds.length} seleccionados</span><button disabled={busy || !sortedChapters.length} onClick={() => setSelectedChapterIds(selectedChapterIds.length === sortedChapters.length ? [] : sortedChapters.map(ch => ch.id))}>{selectedChapterIds.length === sortedChapters.length ? 'Quitar selección' : 'Seleccionar visibles'}</button><button className="su-install" disabled={busy || !selectedChapterIds.length} onClick={downloadAndExportSelected}><Download size={15} /> Descargar y exportar</button></div><div className="su-chapter-order"><label htmlFor="chapter-order">Ordenar capítulos</label><select id="chapter-order" value={chapterOrder} onChange={e => setChapterOrder(e.target.value)}><option value="original">Orden de la fuente</option><option value="ascending">Primero al último</option><option value="descending">Último al primero</option></select></div><div className="su-chapter-order"><label htmlFor="chapter-filter">Filtrar capítulos</label><select id="chapter-filter" value={chapterFilter} onChange={e => setChapterFilter(e.target.value)}><option value="all">Todos</option><option value="unread">No leídos</option><option value="read">Leídos</option></select></div>{sortedChapters.length === 0 && <p className="su-empty">No hay capítulos para este filtro.</p>}{sortedChapters.map(ch => { const saved = downloads.find(d => d.id === ch.id); return <div className="su-row su-chapter" key={ch.id}><input type="checkbox" className="su-chapter-select" checked={selectedChapterIds.includes(ch.id)} onChange={() => toggleChapter(ch.id)} aria-label={`Seleccionar ${ch.name}`} /><button className="su-chapter-open" onClick={() => saved ? openOffline(saved) : run(async () => { const result = await suwayomi.pages(ch.id); setReadingChapter(ch.id); setPages(result); })}><span>{ch.name}<small className="su-chapter-date">{chapterDate(ch.uploadDate)}</small>{readChapters[`suwayomi:${ch.id}`] && <small className="su-saved">✓ Leído</small>}{newChapterIds.includes(ch.id) && <small className="su-saved">● Nuevo</small>}{saved && <small className="su-saved">✓ Descargado</small>}</span><ChevronRight size={18} /></button><button className="su-read-toggle" onClick={() => markRead(ch.id, !readChapters[`suwayomi:${ch.id}`])}>{readChapters[`suwayomi:${ch.id}`] ? 'No leído' : 'Marcar leído'}</button><button className="su-install" disabled={busy || !!saved} onClick={() => downloadChapter(ch)} aria-label={`Descargar ${ch.name}`}><Download size={16} /> {saved ? 'Guardado' : 'Descargar'}</button>{saved && <button className="su-install" disabled={busy} onClick={() => exportChapter(saved)} aria-label={`Exportar ${ch.name} como CBZ`}>Exportar CBZ</button>}</div>; })}</>
       : showDownloads ? <>{back(() => setShowDownloads(false), 'Explorar')}<div className="su-detail"><h2>Descargas en este dispositivo</h2><p>Disponibles sin conexión o como archivo CBZ para otra app.</p></div>{downloads.length === 0 && <p className="su-empty">Todavía no has descargado capítulos.</p>}{downloads.map(item => <div className="su-row su-chapter" key={item.id}><button className="su-chapter-open" onClick={() => openOffline(item)}><span>{item.mangaTitle}<small className="su-saved">{item.name} · ✓ Descargado</small></span><ChevronRight size={18} /></button><button className="su-install" disabled={busy} onClick={() => exportChapter(item)}>Exportar CBZ</button><button className="su-uninstall" onClick={() => run(async () => { await offline.remove(item.id); await refreshDownloads(); })}>Eliminar</button></div>)}</>
